@@ -12,7 +12,8 @@
  * the movement since the last GPS reading, and calculates
  * yaw from it. 
  */
-
+ 
+int NUM_GPS_STORED = 8;
 
 using std::cout;
 using std::endl;
@@ -61,24 +62,15 @@ void subscribeGPS(const Odometry::ConstPtr& msg) {
   Odometry gps = *msg;
   cout << "Received a GPS!" << endl;
   gps_vec.push_back(gps);
-  
   // Grab the pose of the robot relative to the odom frame.
   TransformStamped ts;
   lookupTransform( ts, odom_frame, base_frame, ros::Time(0) );
   Transform odom = ts.transform;
   odom_vec.push_back(odom);
   
-  // Remove the front until we get one that is within our desired timeframe.
-  bool fin = false;
-  while ( !fin ){
-    Odometry odom = gps_vec.front();
-    ros::Duration d = (gps.header.stamp - odom.header.stamp);
-    if ( d.toSec() > seconds_of_gps ){
-      gps_vec.erase(gps_vec.begin());
-      odom_vec.erase(odom_vec.begin());
-    } else {
-      fin = true;
-    }
+  // If the vector isn't filled, do nothing.
+  if( gps_vec.size() < NUM_GPS_STORED ){
+    return;
   }
   
   // Grab the previous GPS location and pose relative to odom.
@@ -169,7 +161,7 @@ void loadParams(ros::NodeHandle n_priv){
   // Set default parameters.
   string default_odom_frame = "odom";
   string default_base_frame = "base_link";
-  double default_seconds_of_gps = 8;
+  double default_seconds_of_gps = 5;
   // Check parameter server to override defaults.
   n_priv.param( "odom_frame", odom_frame, default_odom_frame);
   n_priv.param( "base_frame", base_frame, default_base_frame);
